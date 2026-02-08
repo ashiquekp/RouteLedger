@@ -30,10 +30,8 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders.put(
-            "MAPS_API_KEY",
-            project.findProperty("MAPS_API_KEY")?.toString() ?: ""
-        )
+        manifestPlaceholders["MAPS_API_KEY"] =
+            project.findProperty("MAPS_API_KEY") as String? ?: ""
     }
 
     buildTypes {

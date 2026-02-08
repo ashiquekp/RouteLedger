@@ -1,67 +1,89 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+
+import 'core/background/location_task_handler.dart';
+import 'home_page.dart';
+
+@pragma('vm:entry-point')
+void startCallback() {
+  FlutterForegroundTask.setTaskHandler(LocationTaskHandler());
+}
 
 void main() {
-  runApp(const RouteLedgerApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp());
 }
 
-class RouteLedgerApp extends StatelessWidget {
-  const RouteLedgerApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MapScreen(),
+      title: 'RouteLedger',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: const HomePage(),
     );
   }
 }
 
-class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+/// 🔐 Permission + GPS check (VERY IMPORTANT)
+Future<bool> ensureLocationReady() async {
+  // 1️⃣ Check if GPS is ON
+  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    await Geolocator.openLocationSettings();
+    return false;
+  }
 
-  @override
-  State<MapScreen> createState() => _MapScreenState();
+  // 2️⃣ Check permission
+  LocationPermission permission = await Geolocator.checkPermission();
+
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+  }
+
+  if (permission == LocationPermission.denied ||
+      permission == LocationPermission.deniedForever) {
+    return false;
+  }
+
+  return true;
 }
 
-class _MapScreenState extends State<MapScreen> {
-  bool _permissionGranted = false;
-
-  static const CameraPosition initialPosition = CameraPosition(
-    target: LatLng(12.9716, 77.5946),
-    zoom: 14,
+/// ▶️ Start foreground + background tracking
+Future<void> startBackgroundTracking() async {
+  FlutterForegroundTask.init(
+    androidNotificationOptions: AndroidNotificationOptions(
+      channelId: 'location_tracking',
+      channelName: 'Location Tracking',
+      channelDescription: 'Tracks location in background',
+      channelImportance: NotificationChannelImportance.LOW,
+      priority: NotificationPriority.LOW,
+      iconData: const NotificationIconData(
+        resType: ResourceType.mipmap,
+        resPrefix: ResourcePrefix.ic,
+        name: 'launcher',
+      ),
+    ),
+    foregroundTaskOptions: const ForegroundTaskOptions(
+      interval: 5000,
+      isOnceEvent: false,
+      autoRunOnBoot: false,
+      allowWakeLock: true,
+      allowWifiLock: true,
+    ),
+    iosNotificationOptions: const IOSNotificationOptions(
+      showNotification: true,
+      playSound: false,
+    ),
   );
 
-  @override
-  void initState() {
-    super.initState();
-    _requestPermission();
-  }
-
-  Future<void> _requestPermission() async {
-    final status = await Permission.location.request();
-    if (status.isGranted) {
-      setState(() {
-        _permissionGranted = true;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!_permissionGranted) {
-      return const Scaffold(
-        body: Center(child: Text('Waiting for location permission...')),
-      );
-    }
-
-    return const Scaffold(
-      body: GoogleMap(
-        initialCameraPosition: initialPosition,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-      ),
-    );
-  }
+  await FlutterForegroundTask.startService(
+    notificationTitle: 'RouteLedger Tracking',
+    notificationText: 'Location tracking active',
+    callback: startCallback,
+  );
 }
