@@ -1,11 +1,10 @@
-import 'dart:async';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
-
-import 'main.dart';
-
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'core/background/location_task_handler.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -16,19 +15,51 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   GoogleMapController? _mapController;
   LatLng? _currentLatLng;
-  StreamSubscription<Position>? _positionStream;
+  bool _initializing = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _initLocationStream();
+  // ---------------- PERMISSION FLOW ----------------
+
+  Future<bool> _requestLocationPermission() async {
+    final status = await Permission.locationWhenInUse.request();
+    return status.isGranted;
   }
 
-  Future<void> _initLocationStream() async {
-    bool ready = await ensureLocationReady();
-    if (!ready) return;
+  Future<bool> _ensureGpsEnabled() async {
+    final enabled = await Geolocator.isLocationServiceEnabled();
+    if (enabled) return true;
 
-    Position pos = await Geolocator.getCurrentPosition(
+    await Geolocator.openLocationSettings();
+    return false;
+  }
+
+  Future<bool> _requestNotificationPermission() async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.notification.request();
+    return status.isGranted;
+  }
+
+  // ---------------- INITIAL SETUP ----------------
+
+  Future<void> _initializeLocation() async {
+    if (_initializing) return;
+    _initializing = true;
+
+    // 1️⃣ Location permission
+    final granted = await _requestLocationPermission();
+    if (!granted) {
+      _initializing = false;
+      return;
+    }
+
+    // 2️⃣ GPS enabled
+    final gpsReady = await _ensureGpsEnabled();
+    if (!gpsReady) {
+      _initializing = false;
+      return;
+    }
+
+    // 3️⃣ Now SAFE to access location
+    final pos = await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
     );
 
@@ -36,63 +67,66 @@ class _HomePageState extends State<HomePage> {
       _currentLatLng = LatLng(pos.latitude, pos.longitude);
     });
 
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      ),
-    ).listen((position) {
-      final latLng = LatLng(position.latitude, position.longitude);
+    _initializing = false;
+  }
 
-      setState(() {
-        _currentLatLng = latLng;
-      });
+  // ---------------- TRACKING ----------------
 
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(latLng),
+  Future<void> startTracking() async {
+    // Ensure everything ready
+    await _initializeLocation();
+
+    if (_currentLatLng == null) return;
+
+    // 4️⃣ Notification permission
+    await _requestNotificationPermission();
+
+    if (!await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.startService(
+        notificationTitle: 'RouteLedger',
+        notificationText: 'Tracking your route',
+        callback: startCallback,
       );
-    });
+    }
   }
 
-  @override
-  void dispose() {
-    _positionStream?.cancel();
-    super.dispose();
-  }
+  // ---------------- UI ----------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('RouteLedger')),
       body: _currentLatLng == null
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _currentLatLng!,
-                zoom: 16,
+          ? Center(
+              child: ElevatedButton(
+                onPressed: _initializeLocation,
+                child: const Text('Enable Location'),
               ),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
-              markers: {
-                Marker(
-                  markerId: const MarkerId('me'),
-                  position: _currentLatLng!,
+            )
+          : Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentLatLng!,
+                    zoom: 16,
+                  ),
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                  },
                 ),
-              },
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: ElevatedButton(
+                    onPressed: startTracking,
+                    child: const Text('Start Tracking'),
+                  ),
+                ),
+              ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        label: const Text('Start Tracking'),
-        icon: const Icon(Icons.play_arrow),
-        onPressed: () async {
-          bool ready = await ensureLocationReady();
-          if (!ready) return;
-
-          await startBackgroundTracking();
-        },
-      ),
     );
   }
 }
