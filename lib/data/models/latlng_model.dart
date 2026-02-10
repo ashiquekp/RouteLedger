@@ -12,10 +12,10 @@ class LatLngModel {
         'lng': longitude,
       };
 
-  factory LatLngModel.fromJson(Map<String, dynamic> json) {
+  factory LatLngModel.fromJson(Map json) {
     return LatLngModel(
-      latitude: json['lat'],
-      longitude: json['lng'],
+      latitude: (json['lat'] as num).toDouble(),
+      longitude: (json['lng'] as num).toDouble(),
     );
   }
 }

@@ -12,6 +12,7 @@ import 'package:routeledger/core/background/location_task_handler.dart';
 import 'package:routeledger/core/services/route_storage_service.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
 import 'package:routeledger/data/models/route_model.dart';
+import 'package:routeledger/presentation/history/route_history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -241,6 +242,22 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('RouteLedger'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RouteHistoryPage(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: GoogleMap(
           initialCameraPosition: CameraPosition(
