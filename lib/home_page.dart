@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -7,6 +8,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:routeledger/core/background/location_task_handler.dart';
+
+import 'package:routeledger/core/services/route_storage_service.dart';
+import 'package:routeledger/data/models/latlng_model.dart';
+import 'package:routeledger/data/models/route_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,6 +33,12 @@ class _HomePageState extends State<HomePage> {
 
   LatLng? _currentLatLng;
 
+  // ===============================
+  // 🔹 NEW: Route persistence helpers
+  // ===============================
+  final RouteStorageService _routeStorageService = RouteStorageService();
+  DateTime? _currentRouteStartTime;
+
   Future<bool> _requestLocationPermission() async {
     final status = await Permission.locationWhenInUse.request();
     return status.isGranted;
@@ -48,12 +59,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ===============================
-  // INITIAL LOCATION (already works)
+  // INITIAL LOCATION
   // ===============================
   @override
   void initState() {
     super.initState();
     _loadInitialLocation();
+    _loadSavedRoutes(); // 🔹 NEW (history kept in memory)
   }
 
   Future<void> _loadInitialLocation() async {
@@ -87,7 +99,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ===============================
-  // START TRACKING (NEW SEGMENT)
+  // 🔹 NEW: Load routes from storage
+  // ===============================
+  Future<void> _loadSavedRoutes() async {
+    final routes = await _routeStorageService.loadAll();
+    debugPrint('Loaded ${routes.length} saved routes');
+  }
+
+  // ===============================
+  // START TRACKING
   // ===============================
   Future<void> startBackgroundTracking() async {
     if (_isTracking) return;
@@ -96,7 +116,8 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       _isTracking = true;
-      _routeSegments.add([]); // 🔥 NEW SEGMENT
+      _currentRouteStartTime = DateTime.now(); // 🔹 NEW
+      _routeSegments.add([]);
     });
 
     await FlutterForegroundTask.startService(
@@ -124,7 +145,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // ===============================
-  // STOP TRACKING
+  // STOP TRACKING (SAVE ROUTE)
   // ===============================
   Future<void> stopBackgroundTracking() async {
     if (!_isTracking) return;
@@ -132,8 +153,32 @@ class _HomePageState extends State<HomePage> {
     await FlutterForegroundTask.stopService();
     await _positionStream?.cancel();
 
+    // 🔹 NEW: Persist route
+    final lastSegment = _routeSegments.isNotEmpty
+        ? _routeSegments.last
+        : <LatLng>[];
+
+    if (lastSegment.length > 1 && _currentRouteStartTime != null) {
+      final route = RouteModel(
+        id: _generateRouteId(),
+        startTime: _currentRouteStartTime!,
+        endTime: DateTime.now(),
+        points: lastSegment
+            .map(
+              (e) => LatLngModel(
+                latitude: e.latitude,
+                longitude: e.longitude,
+              ),
+            )
+            .toList(),
+      );
+
+      await _routeStorageService.save(route);
+    }
+
     setState(() {
       _isTracking = false;
+      _currentRouteStartTime = null;
     });
   }
 
@@ -166,9 +211,22 @@ class _HomePageState extends State<HomePage> {
 
     _mapController!.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(target: position, zoom: 17, tilt: 45, bearing: 0),
+        CameraPosition(
+          target: position,
+          zoom: 17,
+          tilt: 45,
+          bearing: 0,
+        ),
       ),
     );
+  }
+
+  // ===============================
+  // 🔹 NEW: Route ID generator
+  // ===============================
+  String _generateRouteId() {
+    final rand = Random().nextInt(99999);
+    return '${DateTime.now().millisecondsSinceEpoch}_$rand';
   }
 
   // ===============================
@@ -177,26 +235,29 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     if (_currentLatLng == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
-      body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _currentLatLng!,
-          zoom: 16,
+      body: SafeArea(
+        child: GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: _currentLatLng!,
+            zoom: 16,
+          ),
+          myLocationEnabled: true,
+          myLocationButtonEnabled: true,
+          polylines: _buildPolylines(),
+          onMapCreated: (controller) {
+            _mapController = controller;
+          },
         ),
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-        polylines: _buildPolylines(),
-        onMapCreated: (controller) {
-          _mapController = controller;
-        },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isTracking
-            ? stopBackgroundTracking
-            : startBackgroundTracking,
+        onPressed:
+            _isTracking ? stopBackgroundTracking : startBackgroundTracking,
         label: Text(_isTracking ? 'Stop Tracking' : 'Start Tracking'),
         icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
       ),

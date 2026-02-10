@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'home_page.dart';
 
-void main() {
+void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
 
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
