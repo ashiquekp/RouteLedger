@@ -15,6 +15,7 @@ import 'package:routeledger/core/services/route_storage_service.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
 import 'package:routeledger/data/models/route_model.dart';
 import 'package:routeledger/presentation/history/route_history_page.dart';
+import 'package:routeledger/presentation/summary/route_summary_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -200,6 +201,13 @@ class _HomePageState extends State<HomePage> {
       );
 
       await _routeStorageService.save(route);
+
+      if (!mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => RouteSummaryPage(route: route)),
+      );
     }
 
     setState(() {

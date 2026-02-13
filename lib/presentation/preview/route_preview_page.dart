@@ -28,11 +28,65 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
         .toList();
   }
 
+  // ===============================
+  // FIT CAMERA TO ROUTE (IMPORTANT)
+  // ===============================
+  void _fitCamera() {
+    if (_mapController == null || _points.isEmpty) return;
+
+    double minLat = _points.first.latitude;
+    double maxLat = _points.first.latitude;
+    double minLng = _points.first.longitude;
+    double maxLng = _points.first.longitude;
+
+    for (final p in _points) {
+      minLat = minLat < p.latitude ? minLat : p.latitude;
+      maxLat = maxLat > p.latitude ? maxLat : p.latitude;
+      minLng = minLng < p.longitude ? minLng : p.longitude;
+      maxLng = maxLng > p.longitude ? maxLng : p.longitude;
+    }
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+
+    _mapController!.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 60),
+    );
+  }
+
+  // ===============================
+  // START + END MARKERS
+  // ===============================
+  Set<Marker> _markers() {
+    if (_points.isEmpty) return {};
+
+    return {
+      Marker(
+        markerId: const MarkerId("start"),
+        position: _points.first,
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueRed,
+        ),
+        infoWindow: const InfoWindow(title: "Start"),
+      ),
+      Marker(
+        markerId: const MarkerId("end"),
+        position: _points.last,
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueRed,
+        ),
+        infoWindow: const InfoWindow(title: "End"),
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_points.isEmpty) {
       return const Scaffold(
-        body: Center(child: Text("No route points")),
+        body: Center(child: Text("No route data")),
       );
     }
 
@@ -40,7 +94,6 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
       appBar: AppBar(
         title: const Text("Route Preview"),
       ),
-
       body: Stack(
         children: [
 
@@ -52,18 +105,25 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
             ),
             polylines: {
               Polyline(
-                polylineId: const PolylineId("preview_route"),
-                width: 5,
+                polylineId: const PolylineId("route"),
                 points: _points,
+                width: 6,
                 color: Colors.blue,
               ),
             },
+            markers: _markers(),
             onMapCreated: (controller) {
               _mapController = controller;
+
+              // Delay slightly so map is ready
+              Future.delayed(
+                const Duration(milliseconds: 300),
+                _fitCamera,
+              );
             },
           ),
 
-          // 📊 STATS PANEL (NEW)
+          // 📊 Distance + Duration panel
           Positioned(
             left: 12,
             right: 12,
@@ -75,9 +135,7 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-
                     Column(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
                           "Distance",
@@ -86,9 +144,7 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
                         Text(widget.route.formattedDistance),
                       ],
                     ),
-
                     Column(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Text(
                           "Duration",
