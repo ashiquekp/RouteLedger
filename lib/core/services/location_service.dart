@@ -1,5 +1,5 @@
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import '../../core/background/location_task_handler.dart';
+import '../background/location_task_handler.dart';
 
 class LocationService {
   static Future<void> start() async {

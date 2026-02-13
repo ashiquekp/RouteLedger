@@ -33,7 +33,7 @@ class RouteHistoryTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Icons.route),
       title: Text(dateLabel),
-      subtitle: Text('$startTime – $endTime'),
+      subtitle: Text("${route.formattedDistance} • ${route.formattedDuration}",),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         Navigator.push(

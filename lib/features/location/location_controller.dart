@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'location_service.dart';
+import '../../core/services/location_service.dart';
 import 'location_permission.dart';
 
 final locationTrackingProvider =

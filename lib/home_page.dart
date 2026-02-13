@@ -3,11 +3,13 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:routeledger/core/background/location_task_handler.dart';
+import 'package:routeledger/core/services/directions_service.dart';
 
 import 'package:routeledger/core/services/route_storage_service.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
@@ -22,6 +24,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final DirectionsService _directionsService = DirectionsService(
+    apiKey: dotenv.env['DIRECTIONS_API_KEY']!,
+  );
+
   GoogleMapController? _mapController;
   bool _initializing = false;
 
@@ -154,22 +160,41 @@ class _HomePageState extends State<HomePage> {
     await FlutterForegroundTask.stopService();
     await _positionStream?.cancel();
 
-    // 🔹 NEW: Persist route
     final lastSegment = _routeSegments.isNotEmpty
         ? _routeSegments.last
         : <LatLng>[];
 
+    double distanceMeters = 0;
+    int durationSeconds = 0;
+
+    // 🔥 Directions API call
+    if (lastSegment.length >= 2) {
+      final first = lastSegment.first;
+      final last = lastSegment.last;
+
+      final result = await _directionsService.getDistanceAndDuration(
+        originLat: first.latitude,
+        originLng: first.longitude,
+        destLat: last.latitude,
+        destLng: last.longitude,
+      );
+
+      if (result != null) {
+        distanceMeters = result["distance"].toDouble();
+        durationSeconds = result["duration"];
+      }
+    }
+
     if (lastSegment.length > 1 && _currentRouteStartTime != null) {
       final route = RouteModel(
-        id: _generateRouteId(),
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
         startTime: _currentRouteStartTime!,
         endTime: DateTime.now(),
+        distanceMeters: distanceMeters,
+        durationSeconds: durationSeconds,
         points: lastSegment
             .map(
-              (e) => LatLngModel(
-                latitude: e.latitude,
-                longitude: e.longitude,
-              ),
+              (e) => LatLngModel(latitude: e.latitude, longitude: e.longitude),
             )
             .toList(),
       );
@@ -212,12 +237,7 @@ class _HomePageState extends State<HomePage> {
 
     _mapController!.animateCamera(
       CameraUpdate.newCameraPosition(
-        CameraPosition(
-          target: position,
-          zoom: 17,
-          tilt: 45,
-          bearing: 0,
-        ),
+        CameraPosition(target: position, zoom: 17, tilt: 45, bearing: 0),
       ),
     );
   }
@@ -236,9 +256,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     if (_currentLatLng == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -250,9 +268,7 @@ class _HomePageState extends State<HomePage> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const RouteHistoryPage(),
-                ),
+                MaterialPageRoute(builder: (_) => const RouteHistoryPage()),
               );
             },
           ),
@@ -273,8 +289,9 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed:
-            _isTracking ? stopBackgroundTracking : startBackgroundTracking,
+        onPressed: _isTracking
+            ? stopBackgroundTracking
+            : startBackgroundTracking,
         label: Text(_isTracking ? 'Stop Tracking' : 'Start Tracking'),
         icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
       ),

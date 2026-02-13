@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-
 import '../../data/models/route_model.dart';
 
 class RoutePreviewPage extends StatefulWidget {
@@ -23,71 +22,87 @@ class _RoutePreviewPageState extends State<RoutePreviewPage> {
   @override
   void initState() {
     super.initState();
+
     _points = widget.route.points
         .map((e) => LatLng(e.latitude, e.longitude))
         .toList();
   }
 
-  void _fitCameraToRoute() {
-    if (_mapController == null || _points.isEmpty) return;
-
-    double minLat = _points.first.latitude;
-    double maxLat = _points.first.latitude;
-    double minLng = _points.first.longitude;
-    double maxLng = _points.first.longitude;
-
-    for (final p in _points) {
-      minLat = minLat < p.latitude ? minLat : p.latitude;
-      maxLat = maxLat > p.latitude ? maxLat : p.latitude;
-      minLng = minLng < p.longitude ? minLng : p.longitude;
-      maxLng = maxLng > p.longitude ? maxLng : p.longitude;
-    }
-
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
-
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 50),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_points.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text("No route points")),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Route Preview'),
+        title: const Text("Route Preview"),
       ),
-      body: GoogleMap(
-        initialCameraPosition: CameraPosition(
-          target: _points.first,
-          zoom: 16,
-        ),
-        polylines: {
-          Polyline(
-            polylineId: const PolylineId('preview_route'),
-            points: _points,
-            width: 5,
-            color: Colors.blue,
+
+      body: Stack(
+        children: [
+
+          // 🗺 MAP
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: _points.first,
+              zoom: 16,
+            ),
+            polylines: {
+              Polyline(
+                polylineId: const PolylineId("preview_route"),
+                width: 5,
+                points: _points,
+                color: Colors.blue,
+              ),
+            },
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
           ),
-        },
-        markers: {
-          Marker(
-            markerId: const MarkerId('start'),
-            position: _points.first,
-            infoWindow: const InfoWindow(title: 'Start'),
+
+          // 📊 STATS PANEL (NEW)
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 20,
+            child: Card(
+              elevation: 6,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Distance",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(widget.route.formattedDistance),
+                      ],
+                    ),
+
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          "Duration",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(widget.route.formattedDuration),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          Marker(
-            markerId: const MarkerId('end'),
-            position: _points.last,
-            infoWindow: const InfoWindow(title: 'End'),
-          ),
-        },
-        onMapCreated: (controller) {
-          _mapController = controller;
-          Future.delayed(const Duration(milliseconds: 300), _fitCameraToRoute);
-        },
+        ],
       ),
     );
   }
