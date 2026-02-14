@@ -7,10 +7,7 @@ import '../../../data/models/route_model.dart';
 class RouteHistoryTile extends StatelessWidget {
   final RouteModel route;
 
-  const RouteHistoryTile({
-    super.key,
-    required this.route,
-  });
+  const RouteHistoryTile({super.key, required this.route});
 
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();
@@ -32,17 +29,18 @@ class RouteHistoryTile extends StatelessWidget {
 
     return ListTile(
       leading: const Icon(Icons.route),
-      title: Text(dateLabel),
-      subtitle: Text("${route.formattedDistance} • ${route.formattedDuration}",),
+      title: Text(route.name),
+      subtitle: Text(
+        "${route.formattedDistance} • ${route.formattedDuration}\n"
+        "${DateFormat('dd MMM yyyy').format(route.startTime)}",
+      ),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => RoutePreviewPage(route: route),
-          ),
+          MaterialPageRoute(builder: (_) => RoutePreviewPage(route: route)),
         );
-      }
+      },
     );
   }
 }

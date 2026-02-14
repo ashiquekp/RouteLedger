@@ -12,6 +12,7 @@ import 'package:routeledger/core/background/location_task_handler.dart';
 import 'package:routeledger/core/services/directions_service.dart';
 
 import 'package:routeledger/core/services/route_storage_service.dart';
+import 'package:routeledger/core/utils/route_namer.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
 import 'package:routeledger/data/models/route_model.dart';
 import 'package:routeledger/presentation/history/route_history_page.dart';
@@ -186,9 +187,16 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
+    // ⭐ Generate name AFTER distance is known
+    final generatedName = RouteNamer.generateName(
+      startTime: _currentRouteStartTime!,
+      distanceMeters: distanceMeters,
+    );
+
     if (lastSegment.length > 1 && _currentRouteStartTime != null) {
       final route = RouteModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: generatedName,
         startTime: _currentRouteStartTime!,
         endTime: DateTime.now(),
         distanceMeters: distanceMeters,

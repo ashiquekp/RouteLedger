@@ -2,6 +2,7 @@ import 'latlng_model.dart';
 
 class RouteModel {
   final String id;
+  final String name; 
   final DateTime startTime;
   final DateTime endTime;
   final List<LatLngModel> points;
@@ -11,6 +12,7 @@ class RouteModel {
 
   RouteModel({
     required this.id,
+    required this.name, 
     required this.startTime,
     required this.endTime,
     required this.points,
@@ -20,6 +22,7 @@ class RouteModel {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'name': name, 
         'startTime': startTime.toIso8601String(),
         'endTime': endTime.toIso8601String(),
         'points': points.map((e) => e.toJson()).toList(),
@@ -30,6 +33,7 @@ class RouteModel {
   factory RouteModel.fromJson(Map json) {
     return RouteModel(
       id: json['id'],
+      name: json['name'] ?? "Trip",
       startTime: DateTime.parse(json['startTime']),
       endTime: DateTime.parse(json['endTime']),
       points: (json['points'] as List)
