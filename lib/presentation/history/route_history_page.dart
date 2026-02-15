@@ -56,7 +56,7 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
 
           return ListView.separated(
             itemCount: routes.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, __) => const SizedBox(),
             itemBuilder: (context, index) {
               final route = routes[index];
               return RouteHistoryTile(route: route);
