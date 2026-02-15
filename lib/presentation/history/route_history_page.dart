@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import '../../core/services/route_storage_service.dart';
 import '../../data/models/route_model.dart';
 import 'widgets/route_history_tile.dart';
@@ -33,9 +32,7 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Route History'),
-      ),
+      appBar: AppBar(title: const Text('Route History')),
       body: FutureBuilder<List<RouteModel>>(
         future: _routesFuture,
         builder: (context, snapshot) {
@@ -54,12 +51,96 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
 
           final routes = snapshot.data!;
 
-          return ListView.separated(
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: routes.length,
-            separatorBuilder: (_, __) => const SizedBox(),
             itemBuilder: (context, index) {
               final route = routes[index];
-              return RouteHistoryTile(route: route);
+
+              return Dismissible(
+                key: ValueKey(route.id),
+                direction: DismissDirection.endToStart,
+                dismissThresholds: const {DismissDirection.endToStart: 0.4},
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade400,
+                    borderRadius: BorderRadius.circular(27),
+                  ),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+
+                // 🔥 CONFIRM BEFORE DELETE
+                confirmDismiss: (direction) async {
+                  return await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      icon: const Icon(Icons.delete_outline),
+                      title: const Text(
+                        'Delete Route',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      content: const Text(
+                        'Are you sure you want to delete this route?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.errorContainer,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+
+                onDismissed: (direction) async {
+                  final deletedRoute = route;
+
+                  await _storageService.delete(route.id);
+
+                  setState(() {
+                    _routesFuture = _loadRoutes();
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Route deleted'),
+                      duration: const Duration(seconds: 4),
+                      action: SnackBarAction(
+                        label: 'UNDO',
+                        onPressed: () async {
+                          await _storageService.save(deletedRoute);
+
+                          setState(() {
+                            _routesFuture = _loadRoutes();
+                          });
+                        },
+                      ),
+                    ),
+                  );
+                },
+
+                child: RouteHistoryTile(route: route),
+              );
             },
           );
         },

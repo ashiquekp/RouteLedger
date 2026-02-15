@@ -11,4 +11,8 @@ class RouteStorageService {
   Future<List<RouteModel>> loadAll() {
     return _local.getAllRoutes();
   }
+
+  Future<void> delete(String routeId) {
+    return _local.deleteRoute(routeId);
+  }
 }

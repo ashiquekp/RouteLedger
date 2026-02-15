@@ -33,7 +33,7 @@ class RouteHistoryTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)),
         color: colorScheme.surface,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
@@ -102,7 +102,7 @@ class RouteHistoryTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.primary.withOpacity(0.08),
+        color: colorScheme.primary.withOpacity(0.07),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(
