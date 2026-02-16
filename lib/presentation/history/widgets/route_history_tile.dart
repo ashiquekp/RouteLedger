@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:routeledger/presentation/preview/route_preview_page.dart';
+import 'package:routeledger/presentation/route_details/route_details_page.dart';
 import '../../../data/models/route_model.dart';
 
 class RouteHistoryTile extends StatelessWidget {
@@ -40,7 +40,7 @@ class RouteHistoryTile extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => RoutePreviewPage(route: route)),
+              MaterialPageRoute(builder: (_) => RouteDetailsPage(route: route),),
             );
           },
           child: Padding(

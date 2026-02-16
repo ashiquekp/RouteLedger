@@ -1,46 +1,25 @@
 import 'package:flutter/material.dart';
-import '../../core/services/route_storage_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/route_model.dart';
+import 'route_history_provider.dart';
 import 'widgets/route_history_tile.dart';
 
-class RouteHistoryPage extends StatefulWidget {
+class RouteHistoryPage extends ConsumerWidget {
   const RouteHistoryPage({super.key});
 
   @override
-  State<RouteHistoryPage> createState() => _RouteHistoryPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final routesAsync = ref.watch(routeHistoryProvider);
 
-class _RouteHistoryPageState extends State<RouteHistoryPage> {
-  final RouteStorageService _storageService = RouteStorageService();
-
-  late Future<List<RouteModel>> _routesFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _routesFuture = _loadRoutes();
-  }
-
-  Future<List<RouteModel>> _loadRoutes() async {
-    final routes = await _storageService.loadAll();
-
-    // Latest first
-    routes.sort((a, b) => b.startTime.compareTo(a.startTime));
-    return routes;
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Route History')),
-      body: FutureBuilder<List<RouteModel>>(
-        future: _routesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+      body: routesAsync.when(
+        loading: () =>
+            const Center(child: CircularProgressIndicator()),
+        error: (e, _) =>
+            const Center(child: Text('Something went wrong')),
+        data: (routes) {
+          if (routes.isEmpty) {
             return const Center(
               child: Text(
                 'No routes recorded yet',
@@ -48,8 +27,6 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
               ),
             );
           }
-
-          final routes = snapshot.data!;
 
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -60,7 +37,9 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
               return Dismissible(
                 key: ValueKey(route.id),
                 direction: DismissDirection.endToStart,
-                dismissThresholds: const {DismissDirection.endToStart: 0.4},
+                dismissThresholds: const {
+                  DismissDirection.endToStart: 0.4
+                },
                 background: Container(
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -68,43 +47,26 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
                     color: Colors.red.shade400,
                     borderRadius: BorderRadius.circular(27),
                   ),
-                  child: const Icon(Icons.delete, color: Colors.white),
+                  child:
+                      const Icon(Icons.delete, color: Colors.white),
                 ),
 
-                // 🔥 CONFIRM BEFORE DELETE
-                confirmDismiss: (direction) async {
+                confirmDismiss: (_) async {
                   return await showDialog<bool>(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      icon: const Icon(Icons.delete_outline),
-                      title: const Text(
-                        'Delete Route',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
+                    builder: (_) => AlertDialog(
+                      title: const Text('Delete Route'),
                       content: const Text(
-                        'Are you sure you want to delete this route?',
-                      ),
+                          'Are you sure you want to delete this route?'),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.pop(context, false),
                           child: const Text('Cancel'),
                         ),
-                        FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.errorContainer,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onErrorContainer,
-                          ),
-                          onPressed: () => Navigator.pop(context, true),
+                        FilledButton(
+                          onPressed: () =>
+                              Navigator.pop(context, true),
                           child: const Text('Delete'),
                         ),
                       ],
@@ -112,27 +74,22 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
                   );
                 },
 
-                onDismissed: (direction) async {
+                onDismissed: (_) async {
                   final deletedRoute = route;
 
-                  await _storageService.delete(route.id);
-
-                  setState(() {
-                    _routesFuture = _loadRoutes();
-                  });
+                  await ref
+                      .read(routeHistoryProvider.notifier)
+                      .delete(route.id);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: const Text('Route deleted'),
-                      duration: const Duration(seconds: 4),
                       action: SnackBarAction(
                         label: 'UNDO',
                         onPressed: () async {
-                          await _storageService.save(deletedRoute);
-
-                          setState(() {
-                            _routesFuture = _loadRoutes();
-                          });
+                          await ref
+                              .read(routeHistoryProvider.notifier)
+                              .restore(deletedRoute);
                         },
                       ),
                     ),

@@ -2,17 +2,16 @@ import 'latlng_model.dart';
 
 class RouteModel {
   final String id;
-  final String name; 
+  final String name;
   final DateTime startTime;
   final DateTime endTime;
   final List<LatLngModel> points;
-
   final double distanceMeters;
   final int durationSeconds;
 
   RouteModel({
     required this.id,
-    required this.name, 
+    required this.name,
     required this.startTime,
     required this.endTime,
     required this.points,
@@ -20,9 +19,23 @@ class RouteModel {
     this.durationSeconds = 0,
   });
 
+  RouteModel copyWith({
+    String? name,
+  }) {
+    return RouteModel(
+      id: id,
+      name: name ?? this.name,
+      startTime: startTime,
+      endTime: endTime,
+      points: points,
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
-        'name': name, 
+        'name': name,
         'startTime': startTime.toIso8601String(),
         'endTime': endTime.toIso8601String(),
         'points': points.map((e) => e.toJson()).toList(),
