@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../core/services/route_export_service.dart';
 import '../../data/models/route_model.dart';
 import 'route_details_controller.dart';
 
@@ -17,6 +18,7 @@ class RouteDetailsPage extends ConsumerStatefulWidget {
 
 class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
   GoogleMapController? _mapController;
+  final _exportService = RouteExportService();
 
   late List<LatLng> _allPoints;
   final List<LatLng> _animatedPoints = [];
@@ -159,8 +161,17 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
       appBar: AppBar(
         title: GestureDetector(
           onTap: () => _showRenameDialog(route.name),
-          child: Text(route.name),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [Text(route.name), Icon(Icons.edit_outlined)],
+          ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () => _showExportOptions(route),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -276,6 +287,43 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
               Text(title),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showExportOptions(RouteModel route) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.text_snippet),
+              title: const Text("Share as Text"),
+              onTap: () async {
+                Navigator.pop(context);
+                await _exportService.shareAsText(route);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_present),
+              title: const Text("Export as JSON"),
+              onTap: () async {
+                Navigator.pop(context);
+                await _exportService.exportAsJson(route);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.map),
+              title: const Text("Export as GPX"),
+              onTap: () async {
+                Navigator.pop(context);
+                await _exportService.exportAsGpx(route);
+              },
+            ),
+          ],
         ),
       ),
     );
