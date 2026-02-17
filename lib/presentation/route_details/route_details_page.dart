@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../../core/services/route_export_service.dart';
 import '../../data/models/route_model.dart';
 import 'route_details_controller.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 
 class RouteDetailsPage extends ConsumerStatefulWidget {
   final RouteModel route;
@@ -107,7 +110,13 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
     _animationTimer = Timer.periodic(const Duration(milliseconds: 25), (timer) {
       if (_currentIndex >= _allPoints.length) {
         timer.cancel();
-        Future.delayed(const Duration(milliseconds: 400), _fitCamera);
+
+        Future.delayed(const Duration(milliseconds: 400), () async {
+          _fitCamera();
+          await Future.delayed(const Duration(milliseconds: 600));
+          await _generateAndCacheThumbnail();
+        });
+
         return;
       }
 
@@ -146,6 +155,23 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
     return markers;
   }
 
+  Future<void> _generateAndCacheThumbnail() async {
+    if (_mapController == null) return;
+
+    try {
+      final Uint8List? bytes = await _mapController!.takeSnapshot();
+
+      if (bytes == null) return;
+
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File("${dir.path}/route_${widget.route.id}.png");
+
+      await file.writeAsBytes(bytes);
+    } catch (e) {
+      debugPrint("Snapshot error: $e");
+    }
+  }
+
   @override
   void dispose() {
     _animationTimer?.cancel();
@@ -176,29 +202,32 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.45,
-              child: GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _allPoints.first,
-                  zoom: 16,
-                ),
-                polylines: {
-                  Polyline(
-                    polylineId: const PolylineId("animated_route"),
-                    points: _animatedPoints,
-                    width: 6,
-                    color: Colors.blue,
+            Hero(
+              tag: "route_map_${route.id}",
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.45,
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _allPoints.first,
+                    zoom: 16,
                   ),
-                },
-                markers: _markers(),
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    _fitCamera();
-                    _startReplayAnimation();
-                  });
-                },
+                  polylines: {
+                    Polyline(
+                      polylineId: const PolylineId("animated_route"),
+                      points: _animatedPoints,
+                      width: 6,
+                      color: Colors.blue,
+                    ),
+                  },
+                  markers: _markers(),
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      _fitCamera();
+                      _startReplayAnimation();
+                    });
+                  },
+                ),
               ),
             ),
 

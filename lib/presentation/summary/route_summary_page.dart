@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:routeledger/presentation/route_details/route_details_page.dart';
 import '../../data/models/route_model.dart';
-import '../preview/route_preview_page.dart';
 
 class RouteSummaryPage extends StatelessWidget {
   final RouteModel route;
@@ -70,7 +70,7 @@ class RouteSummaryPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => RoutePreviewPage(route: route),
+                      builder: (_) => RouteDetailsPage(route: route),
                     ),
                   );
                 },
