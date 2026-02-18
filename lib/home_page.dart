@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -16,16 +16,17 @@ import 'package:routeledger/core/utils/route_namer.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
 import 'package:routeledger/data/models/route_model.dart';
 import 'package:routeledger/presentation/history/route_history_page.dart';
+import 'package:routeledger/presentation/history/route_history_provider.dart';
 import 'package:routeledger/presentation/summary/route_summary_page.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget  {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+ ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   final DirectionsService _directionsService = DirectionsService(
     apiKey: dotenv.env['DIRECTIONS_API_KEY']!,
   );
@@ -209,7 +210,7 @@ class _HomePageState extends State<HomePage> {
       );
 
       await _routeStorageService.save(route);
-
+      ref.invalidate(routeHistoryProvider);
       if (!mounted) return;
 
       Navigator.push(
@@ -256,14 +257,6 @@ class _HomePageState extends State<HomePage> {
         CameraPosition(target: position, zoom: 17, tilt: 45, bearing: 0),
       ),
     );
-  }
-
-  // ===============================
-  // 🔹 NEW: Route ID generator
-  // ===============================
-  String _generateRouteId() {
-    final rand = Random().nextInt(99999);
-    return '${DateTime.now().millisecondsSinceEpoch}_$rand';
   }
 
   // ===============================
