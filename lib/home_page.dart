@@ -291,18 +291,146 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
+          zoomControlsEnabled: false,
           polylines: _buildPolylines(),
           onMapCreated: (controller) {
             _mapController = controller;
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isTracking
-            ? stopBackgroundTracking
-            : startBackgroundTracking,
-        label: Text(_isTracking ? 'Stop Tracking' : 'Start Tracking'),
-        icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _TrackingFAB(
+        isTracking: _isTracking,
+        onStart: startBackgroundTracking,
+        onStop: stopBackgroundTracking,
+      ),
+    );
+  }
+}
+
+class _TrackingFAB extends StatefulWidget {
+  final bool isTracking;
+  final VoidCallback onStart;
+  final VoidCallback onStop;
+
+  const _TrackingFAB({
+    required this.isTracking,
+    required this.onStart,
+    required this.onStop,
+  });
+
+  @override
+  State<_TrackingFAB> createState() => _TrackingFABState();
+}
+
+class _TrackingFABState extends State<_TrackingFAB>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pressController;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _pressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      lowerBound: 0.0,
+      upperBound: 0.05,
+    );
+
+    _scale = Tween<double>(begin: 1, end: 0.95)
+        .animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _pressController.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (widget.isTracking) {
+      widget.onStop();
+    } else {
+      widget.onStart();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final backgroundColor = widget.isTracking
+        ? theme.colorScheme.error
+        : theme.colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: GestureDetector(
+        onTapDown: (_) => _pressController.forward(),
+        onTapUp: (_) => _pressController.reverse(),
+        onTapCancel: () => _pressController.reverse(),
+        onTap: _handleTap,
+        child: AnimatedBuilder(
+          animation: _scale,
+          builder: (_, child) {
+            return Transform.scale(
+              scale: _scale.value,
+              child: child,
+            );
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(40), // more pill-like
+              boxShadow: [
+                BoxShadow(
+                  color: backgroundColor.withOpacity(0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: Icon(
+                    widget.isTracking
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    key: ValueKey(widget.isTracking),
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+                  child: Text(
+                    widget.isTracking
+                        ? 'Stop Tracking'
+                        : 'Start Tracking',
+                    key: ValueKey(widget.isTracking),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

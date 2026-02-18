@@ -58,8 +58,9 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
         child: Card(
           elevation: 4,
           shadowColor: Colors.black.withOpacity(0.08),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTapDown: (_) => setState(() => _isPressed = true),
@@ -82,11 +83,11 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
                 FutureBuilder<File?>(
                   future: _getThumbnailFile(),
                   builder: (context, snapshot) {
-                    return Hero(
-                      tag: "route_map_${route.id}",
-                      child: Stack(
-                        children: [
-                          AnimatedOpacity(
+                    return Stack(
+                      children: [
+                        Hero(
+                          tag: "route_map_${route.id}",
+                          child: AnimatedOpacity(
                             duration: const Duration(milliseconds: 400),
                             opacity: snapshot.hasData ? 1 : 0.7,
                             child: snapshot.hasData
@@ -104,63 +105,71 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
                                     ),
                                   ),
                           ),
+                        ),
 
-                          /// Gradient overlay
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withOpacity(0.6),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          /// Distance + Duration badge
-                          Positioned(
-                            bottom: 12,
-                            left: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.65),
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.straighten,
-                                      size: 16, color: Colors.white),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    route.formattedDistance,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Icon(Icons.timer_outlined,
-                                      size: 16, color: Colors.white),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    route.formattedDuration,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
+                        /// Gradient overlay
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.6),
                                 ],
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+
+                        /// Distance + Duration badge
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.65),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.straighten,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  route.formattedDistance,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Icon(
+                                  Icons.timer_outlined,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  route.formattedDuration,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -169,8 +178,10 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
                 /// Info Section
                 /// =========================
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 18,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
