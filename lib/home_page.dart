@@ -19,11 +19,11 @@ import 'package:routeledger/presentation/history/route_history_page.dart';
 import 'package:routeledger/presentation/history/route_history_provider.dart';
 import 'package:routeledger/presentation/summary/route_summary_page.dart';
 
-class HomePage extends ConsumerStatefulWidget  {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
- ConsumerState<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
@@ -339,8 +339,10 @@ class _TrackingFABState extends State<_TrackingFAB>
       upperBound: 0.05,
     );
 
-    _scale = Tween<double>(begin: 1, end: 0.95)
-        .animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
+    _scale = Tween<double>(
+      begin: 1,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _pressController, curve: Curves.easeOut));
   }
 
   @override
@@ -361,9 +363,10 @@ class _TrackingFABState extends State<_TrackingFAB>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final backgroundColor = widget.isTracking
-        ? theme.colorScheme.error
-        : theme.colorScheme.primary;
+    const brandPrimary = Color(0xFF66558e);
+    const brandError = Color(0xFFD32F2F);
+
+    final backgroundColor = widget.isTracking ? brandError : brandPrimary;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -375,16 +378,12 @@ class _TrackingFABState extends State<_TrackingFAB>
         child: AnimatedBuilder(
           animation: _scale,
           builder: (_, child) {
-            return Transform.scale(
-              scale: _scale.value,
-              child: child,
-            );
+            return Transform.scale(scale: _scale.value, child: child);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOut,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
             decoration: BoxDecoration(
               color: backgroundColor,
               borderRadius: BorderRadius.circular(40), // more pill-like
@@ -417,9 +416,7 @@ class _TrackingFABState extends State<_TrackingFAB>
                   transitionBuilder: (child, animation) =>
                       FadeTransition(opacity: animation, child: child),
                   child: Text(
-                    widget.isTracking
-                        ? 'Stop Tracking'
-                        : 'Start Tracking',
+                    widget.isTracking ? 'Stop Tracking' : 'Start Tracking',
                     key: ValueKey(widget.isTracking),
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: Colors.white,

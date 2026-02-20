@@ -325,34 +325,37 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
     showModalBottomSheet(
       context: context,
       builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.text_snippet),
-              title: const Text("Share as Text"),
-              onTap: () async {
-                Navigator.pop(context);
-                await _exportService.shareAsText(route);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.file_present),
-              title: const Text("Export as JSON"),
-              onTap: () async {
-                Navigator.pop(context);
-                await _exportService.exportAsJson(route);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.map),
-              title: const Text("Export as GPX"),
-              onTap: () async {
-                Navigator.pop(context);
-                await _exportService.exportAsGpx(route);
-              },
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.text_snippet),
+                title: const Text("Share as Text"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _exportService.shareAsText(route);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_present),
+                title: const Text("Export as JSON"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _exportService.exportAsJson(route);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.map),
+                title: const Text("Export as GPX"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _exportService.exportAsGpx(route);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
