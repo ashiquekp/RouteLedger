@@ -1,43 +1,35 @@
+import 'package:hive/hive.dart';
 import '../models/route_model.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class RouteLocalDataSource {
-  static const _key = 'routes';
+  static const _boxName = 'routesBox';
+
+  Box get _box => Hive.box(_boxName);
 
   Future<List<RouteModel>> getAllRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_key);
-
-    if (jsonString == null) return [];
-
-    final decoded = jsonDecode(jsonString) as List;
-    print("Loaded routes: ${decoded.length}");
-
-    return decoded
+    final routes = _box.values
         .map((e) => RouteModel.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+
+    return routes;
   }
 
   Future<void> saveRoute(RouteModel route) async {
-    final routes = await getAllRoutes();
+    await _box.put(route.id, route.toJson());
+  }
 
-    routes.removeWhere((r) => r.id == route.id);
-    routes.add(route);
-
-    await _saveAll(routes);
+  Future<void> updateRoute(RouteModel route) async {
+    await _box.put(route.id, route.toJson());
   }
 
   Future<void> deleteRoute(String routeId) async {
-    final routes = await getAllRoutes();
-    routes.removeWhere((r) => r.id == routeId);
-    await _saveAll(routes);
-    print("Routes after delete: ${routes.length}");
+    await _box.delete(routeId);
   }
 
-  Future<void> _saveAll(List<RouteModel> routes) async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = routes.map((e) => e.toJson()).toList();
-    await prefs.setString(_key, jsonEncode(encoded));
+  Future<List<RouteModel>> getRoutesNeedingEnrichment() async {
+    return _box.values
+        .map((e) => RouteModel.fromJson(Map<String, dynamic>.from(e)))
+        .where((route) => route.needsEnrichment)
+        .toList();
   }
 }

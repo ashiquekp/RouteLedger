@@ -4,8 +4,8 @@ import '../background/location_task_handler.dart';
 class LocationService {
   static Future<void> start() async {
     await FlutterForegroundTask.startService(
-      notificationTitle: 'RouteLedger is tracking location',
-      notificationText: 'Tap to return to app',
+      notificationTitle: 'RouteLedger',
+      notificationText: 'Tracking route in background...',
       callback: startCallback,
     );
   }

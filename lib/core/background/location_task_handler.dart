@@ -10,6 +10,11 @@ class LocationTaskHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
     print('🟢 Background tracking started');
+
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'RouteLedger',
+      notificationText: 'Tracking route in background...',
+    );
   }
 
   @override

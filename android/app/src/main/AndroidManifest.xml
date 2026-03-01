@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
         android:label="routeledger"
         android:name="${applicationName}"
@@ -42,8 +43,9 @@
             android:value="${MAPS_API_KEY}" />
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:exported="false"
             android:foregroundServiceType="location"
-            android:exported="false" />
+            android:stopWithTask="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

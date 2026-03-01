@@ -12,12 +12,22 @@ import 'package:routeledger/core/background/location_task_handler.dart';
 import 'package:routeledger/core/services/directions_service.dart';
 
 import 'package:routeledger/core/services/route_storage_service.dart';
+import 'package:routeledger/core/utils/distance_utils.dart';
 import 'package:routeledger/core/utils/route_namer.dart';
 import 'package:routeledger/data/models/latlng_model.dart';
 import 'package:routeledger/data/models/route_model.dart';
 import 'package:routeledger/presentation/history/route_history_page.dart';
 import 'package:routeledger/presentation/history/route_history_provider.dart';
 import 'package:routeledger/presentation/summary/route_summary_page.dart';
+
+enum LocationInitState {
+  loading,
+  permissionDenied,
+  permissionPermanentlyDenied,
+  gpsDisabled,
+  ready,
+  error,
+}
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -26,13 +36,16 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   final DirectionsService _directionsService = DirectionsService(
     apiKey: dotenv.env['DIRECTIONS_API_KEY']!,
   );
 
+  LocationInitState _locationState = LocationInitState.loading;
+  bool _isProcessingStart = false;
+
   GoogleMapController? _mapController;
-  bool _initializing = false;
 
   bool _isTracking = false;
 
@@ -74,38 +87,85 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadInitialLocation();
-    _loadSavedRoutes(); // 🔹 NEW (history kept in memory)
+    WidgetsBinding.instance.addObserver(this);
+    _initializeLocationFlow();
+    _loadSavedRoutes();
   }
 
-  Future<void> _loadInitialLocation() async {
-    if (_initializing) return;
-    _initializing = true;
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-    // 1️⃣ Location permission
-    final granted = await _requestLocationPermission();
-    if (!granted) {
-      _initializing = false;
-      return;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_locationState == LocationInitState.gpsDisabled ||
+          _locationState == LocationInitState.permissionPermanentlyDenied) {
+        _initializeLocationFlow();
+      }
     }
+  }
 
-    // 2️⃣ GPS enabled
-    final gpsReady = await _ensureGpsEnabled();
-    if (!gpsReady) {
-      _initializing = false;
-      return;
-    }
-
-    // 3️⃣ Now SAFE to access location
-    final pos = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-
+  Future<void> _initializeLocationFlow() async {
     setState(() {
-      _currentLatLng = LatLng(pos.latitude, pos.longitude);
+      _locationState = LocationInitState.loading;
     });
 
-    _initializing = false;
+    try {
+      // ----------------------------
+      // 1️⃣ Check Permission Status
+      // ----------------------------
+      PermissionStatus permissionStatus =
+          await Permission.locationWhenInUse.status;
+
+      if (permissionStatus.isDenied) {
+        permissionStatus = await Permission.locationWhenInUse.request();
+      }
+
+      if (permissionStatus.isPermanentlyDenied) {
+        setState(() {
+          _locationState = LocationInitState.permissionPermanentlyDenied;
+        });
+        return;
+      }
+
+      if (!permissionStatus.isGranted) {
+        setState(() {
+          _locationState = LocationInitState.permissionDenied;
+        });
+        return;
+      }
+
+      // ----------------------------
+      // 2️⃣ Check GPS / Location Service
+      // ----------------------------
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!serviceEnabled) {
+        setState(() {
+          _locationState = LocationInitState.gpsDisabled;
+        });
+        return;
+      }
+
+      // ----------------------------
+      // 3️⃣ Fetch Current Position
+      // ----------------------------
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      setState(() {
+        _currentLatLng = LatLng(position.latitude, position.longitude);
+        _locationState = LocationInitState.ready;
+      });
+    } catch (e) {
+      setState(() {
+        _locationState = LocationInitState.error;
+      });
+    }
   }
 
   // ===============================
@@ -120,45 +180,125 @@ class _HomePageState extends ConsumerState<HomePage> {
   // START TRACKING
   // ===============================
   Future<void> startBackgroundTracking() async {
-    if (_isTracking) return;
-
-    await _requestNotificationPermission();
+    if (_isTracking || _isProcessingStart) return;
 
     setState(() {
-      _isTracking = true;
-      _currentRouteStartTime = DateTime.now(); // 🔹 NEW
-      _routeSegments.add([]);
+      _isProcessingStart = true;
     });
 
-    await FlutterForegroundTask.startService(
-      notificationTitle: 'RouteLedger',
-      notificationText: 'Tracking route…',
-      callback: startCallback,
-    );
+    try {
+      // ----------------------------
+      // 1️⃣ Location Permission
+      // ----------------------------
+      var permission = await Permission.locationWhenInUse.status;
 
-    _positionStream =
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: 5,
-          ),
-        ).listen((position) {
-          final point = LatLng(position.latitude, position.longitude);
+      if (!permission.isGranted) {
+        permission = await Permission.locationWhenInUse.request();
 
-          setState(() {
-            _currentLatLng = point;
-            _routeSegments.last.add(point);
-          });
+        if (!permission.isGranted) {
+          if (permission.isPermanentlyDenied) {
+            await openAppSettings();
+          }
+          return;
+        }
+      }
 
-          _moveCamera(point);
+      // ----------------------------
+      // 2️⃣ GPS Enabled
+      // ----------------------------
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+      if (!serviceEnabled) {
+        setState(() {
+          _locationState = LocationInitState.gpsDisabled;
         });
+        return;
+      }
+
+      // ----------------------------
+      // 3️⃣ Notification Permission (Android 13+)
+      // ----------------------------
+      if (Platform.isAndroid) {
+        var notificationStatus = await Permission.notification.status;
+
+        if (!notificationStatus.isGranted &&
+            !notificationStatus.isPermanentlyDenied) {
+          notificationStatus = await Permission.notification.request();
+        }
+
+        if (!notificationStatus.isGranted) {
+          return;
+        }
+      }
+
+      // ----------------------------
+      // 4️⃣ Safe to Start Tracking
+      // ----------------------------
+      setState(() {
+        _isTracking = true;
+        _currentRouteStartTime = DateTime.now();
+        _routeSegments.add([]);
+      });
+
+      await FlutterForegroundTask.startService(
+        //serviceId: 200,
+        notificationTitle: 'RouteLedger',
+        notificationText: 'Tracking route in background...',
+        //notificationIcon: null,
+        callback: startCallback,
+      );
+
+      await FlutterForegroundTask.updateService(
+        notificationTitle: 'RouteLedger',
+        notificationText: 'Tracking route in background',
+      );
+
+      _positionStream =
+          Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.bestForNavigation,
+              distanceFilter: 5,
+            ),
+          ).listen(
+            (position) {
+              if (position.accuracy > 30) return;
+
+              final point = LatLng(position.latitude, position.longitude);
+
+              setState(() {
+                _currentLatLng = point;
+                _routeSegments.last.add(point);
+              });
+
+              _moveCamera(point);
+            },
+            onError: (error) async {
+              debugPrint("Location stream error: $error");
+
+              await stopBackgroundTracking();
+
+              setState(() {
+                _locationState = LocationInitState.gpsDisabled;
+              });
+            },
+            cancelOnError: true,
+          );
+    } catch (e) {
+      debugPrint("Start tracking failed: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingStart = false;
+        });
+      }
+    }
   }
 
   // ===============================
   // STOP TRACKING (SAVE ROUTE)
   // ===============================
   Future<void> stopBackgroundTracking() async {
-    if (!_isTracking) return;
+    if (!_isTracking || _currentRouteStartTime == null) return;
 
     await FlutterForegroundTask.stopService();
     await _positionStream?.cancel();
@@ -167,13 +307,62 @@ class _HomePageState extends ConsumerState<HomePage> {
         ? _routeSegments.last
         : <LatLng>[];
 
-    double distanceMeters = 0;
-    int durationSeconds = 0;
+    if (lastSegment.length < 2) {
+      setState(() {
+        _isTracking = false;
+        _currentRouteStartTime = null;
+      });
+      return;
+    }
 
-    // 🔥 Directions API call
-    if (lastSegment.length >= 2) {
-      final first = lastSegment.first;
-      final last = lastSegment.last;
+    final points = lastSegment
+        .map((e) => LatLngModel(latitude: e.latitude, longitude: e.longitude))
+        .toList();
+
+    final distanceMeters = DistanceUtils.calculateTotalDistance(points);
+
+    final durationSeconds = DateTime.now()
+        .difference(_currentRouteStartTime!)
+        .inSeconds;
+
+    final generatedName = RouteNamer.generateName(
+      startTime: _currentRouteStartTime!,
+      distanceMeters: distanceMeters,
+    );
+
+    final route = RouteModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: generatedName,
+      startTime: _currentRouteStartTime!,
+      endTime: DateTime.now(),
+      distanceMeters: distanceMeters,
+      durationSeconds: durationSeconds,
+      points: points,
+      needsEnrichment: true,
+    );
+
+    await _routeStorageService.save(route);
+    ref.invalidate(routeHistoryProvider);
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => RouteSummaryPage(route: route)),
+    );
+
+    setState(() {
+      _isTracking = false;
+      _currentRouteStartTime = null;
+    });
+
+    _tryEnrichRoute(route);
+  }
+
+  Future<void> _tryEnrichRoute(RouteModel route) async {
+    try {
+      final first = route.points.first;
+      final last = route.points.last;
 
       final result = await _directionsService.getDistanceAndDuration(
         originLat: first.latitude,
@@ -182,47 +371,17 @@ class _HomePageState extends ConsumerState<HomePage> {
         destLng: last.longitude,
       );
 
-      if (result != null) {
-        distanceMeters = result["distance"].toDouble();
-        durationSeconds = result["duration"];
-      }
-    }
+      if (result == null) return;
 
-    // ⭐ Generate name AFTER distance is known
-    final generatedName = RouteNamer.generateName(
-      startTime: _currentRouteStartTime!,
-      distanceMeters: distanceMeters,
-    );
-
-    if (lastSegment.length > 1 && _currentRouteStartTime != null) {
-      final route = RouteModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: generatedName,
-        startTime: _currentRouteStartTime!,
-        endTime: DateTime.now(),
-        distanceMeters: distanceMeters,
-        durationSeconds: durationSeconds,
-        points: lastSegment
-            .map(
-              (e) => LatLngModel(latitude: e.latitude, longitude: e.longitude),
-            )
-            .toList(),
+      final enriched = route.copyWith(
+        distanceMeters: result["distance"].toDouble(),
+        durationSeconds: result["duration"],
+        needsEnrichment: false,
       );
 
-      await _routeStorageService.save(route);
+      await _routeStorageService.update(enriched);
       ref.invalidate(routeHistoryProvider);
-      if (!mounted) return;
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => RouteSummaryPage(route: route)),
-      );
-    }
-
-    setState(() {
-      _isTracking = false;
-      _currentRouteStartTime = null;
-    });
+    } catch (_) {}
   }
 
   // ===============================
@@ -264,8 +423,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   // ===============================
   @override
   Widget build(BuildContext context) {
-    if (_currentLatLng == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_locationState != LocationInitState.ready) {
+      return Scaffold(body: Center(child: _buildLocationStateUI()));
     }
 
     return Scaffold(
@@ -301,10 +460,92 @@ class _HomePageState extends ConsumerState<HomePage> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: _TrackingFAB(
         isTracking: _isTracking,
-        onStart: startBackgroundTracking,
+        onStart: _isProcessingStart
+            ? () {
+                print(
+                  '*******************************************************',
+                );
+              }
+            : startBackgroundTracking,
         onStop: stopBackgroundTracking,
       ),
     );
+  }
+
+  Widget _buildLocationStateUI() {
+    switch (_locationState) {
+      case LocationInitState.loading:
+        return const CircularProgressIndicator();
+
+      case LocationInitState.permissionDenied:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Location permission is required to continue.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _initializeLocationFlow,
+              child: const Text('Grant Permission'),
+            ),
+          ],
+        );
+
+      case LocationInitState.permissionPermanentlyDenied:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Location permission permanently denied.\nPlease enable it in Settings.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: openAppSettings,
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+
+      case LocationInitState.gpsDisabled:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Location services are disabled.\nPlease enable GPS.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () async {
+                await Geolocator.openLocationSettings();
+              },
+              child: const Text('Enable GPS'),
+            ),
+          ],
+        );
+
+      case LocationInitState.error:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Something went wrong while fetching location.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: _initializeLocationFlow,
+              child: const Text('Retry'),
+            ),
+          ],
+        );
+
+      case LocationInitState.ready:
+        return const SizedBox.shrink();
+    }
   }
 }
 

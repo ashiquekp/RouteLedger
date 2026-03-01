@@ -8,6 +8,7 @@ class RouteModel {
   final List<LatLngModel> points;
   final double distanceMeters;
   final int durationSeconds;
+  final bool needsEnrichment;
 
   RouteModel({
     required this.id,
@@ -15,12 +16,16 @@ class RouteModel {
     required this.startTime,
     required this.endTime,
     required this.points,
-    this.distanceMeters = 0,
-    this.durationSeconds = 0,
+    required this.distanceMeters,
+    required this.durationSeconds,
+    this.needsEnrichment = false,
   });
 
   RouteModel copyWith({
     String? name,
+    double? distanceMeters,
+    int? durationSeconds,
+    bool? needsEnrichment,
   }) {
     return RouteModel(
       id: id,
@@ -28,8 +33,9 @@ class RouteModel {
       startTime: startTime,
       endTime: endTime,
       points: points,
-      distanceMeters: distanceMeters,
-      durationSeconds: durationSeconds,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+      durationSeconds: durationSeconds ?? this.durationSeconds,
+      needsEnrichment: needsEnrichment ?? this.needsEnrichment,
     );
   }
 
@@ -41,6 +47,7 @@ class RouteModel {
         'points': points.map((e) => e.toJson()).toList(),
         'distanceMeters': distanceMeters,
         'durationSeconds': durationSeconds,
+        'needsEnrichment': needsEnrichment,
       };
 
   factory RouteModel.fromJson(Map json) {
@@ -50,20 +57,37 @@ class RouteModel {
       startTime: DateTime.parse(json['startTime']),
       endTime: DateTime.parse(json['endTime']),
       points: (json['points'] as List)
-          .map((e) => LatLngModel.fromJson(
-                Map<String, dynamic>.from(e),
-              ))
+          .map((e) =>
+              LatLngModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
       distanceMeters: (json['distanceMeters'] ?? 0).toDouble(),
       durationSeconds: json['durationSeconds'] ?? 0,
+      needsEnrichment: json['needsEnrichment'] ?? false,
     );
   }
 
-  String get formattedDistance =>
-      "${(distanceMeters / 1000).toStringAsFixed(2)} km";
+  // -------------------------
+  // UI FORMAT HELPERS
+  // -------------------------
+
+  String get formattedDistance {
+    if (distanceMeters < 1000) {
+      return "${distanceMeters.toStringAsFixed(0)} m";
+    }
+    return "${(distanceMeters / 1000).toStringAsFixed(2)} km";
+  }
 
   String get formattedDuration {
-    final minutes = durationSeconds ~/ 60;
-    return "$minutes min";
+    final hours = durationSeconds ~/ 3600;
+    final minutes = (durationSeconds % 3600) ~/ 60;
+    final seconds = durationSeconds % 60;
+
+    if (hours > 0) {
+      return "${hours}h ${minutes}m";
+    } else if (minutes > 0) {
+      return "${minutes}m";
+    } else {
+      return "${seconds}s";
+    }
   }
 }

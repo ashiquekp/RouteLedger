@@ -10,32 +10,34 @@ import 'home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await Hive.openBox('routesBox');
   await dotenv.load(fileName: ".env");
   FlutterForegroundTask.init(
     androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'routeledger_tracking',
-      channelName: 'RouteLedger Tracking',
+      channelId: 'route_tracking_channel',
+      channelName: 'Route Tracking',
       channelDescription: 'Background route tracking',
-      channelImportance: NotificationChannelImportance.LOW,
-      priority: NotificationPriority.LOW,
+      channelImportance: NotificationChannelImportance.DEFAULT,
+      priority: NotificationPriority.DEFAULT,
+      enableVibration: false,
+      playSound: false,
+      showWhen: false,
     ),
-    foregroundTaskOptions: const ForegroundTaskOptions(
+    iosNotificationOptions: const IOSNotificationOptions(),
+    foregroundTaskOptions: ForegroundTaskOptions(
+      //eventAction: ForegroundTaskEventAction.repeat(5000),
       interval: 5000,
       isOnceEvent: false,
       autoRunOnBoot: false,
       allowWakeLock: true,
       allowWifiLock: true,
     ),
-    iosNotificationOptions: const IOSNotificationOptions(
-      showNotification: true,
-      playSound: false,
-    ),
   );
 
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget  {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
@@ -50,3 +52,4 @@ class MyApp extends ConsumerWidget  {
     );
   }
 }
+                  
