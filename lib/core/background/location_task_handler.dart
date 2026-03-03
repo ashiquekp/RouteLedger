@@ -9,8 +9,6 @@ void startCallback() {
 class LocationTaskHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {
-    print('🟢 Background tracking started');
-
     FlutterForegroundTask.updateService(
       notificationTitle: 'RouteLedger',
       notificationText: 'Tracking route in background...',
@@ -18,12 +16,8 @@ class LocationTaskHandler extends TaskHandler {
   }
 
   @override
-  Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {
-    print('📍 Tracking tick');
-  }
+  Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
 
   @override
-  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {
-    print('🔴 Tracking stopped');
-  }
+  Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {}
 }

@@ -62,25 +62,6 @@ class _HomePageState extends ConsumerState<HomePage>
   final RouteStorageService _routeStorageService = RouteStorageService();
   DateTime? _currentRouteStartTime;
 
-  Future<bool> _requestLocationPermission() async {
-    final status = await Permission.locationWhenInUse.request();
-    return status.isGranted;
-  }
-
-  Future<bool> _ensureGpsEnabled() async {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if (enabled) return true;
-
-    await Geolocator.openLocationSettings();
-    return false;
-  }
-
-  Future<bool> _requestNotificationPermission() async {
-    if (!Platform.isAndroid) return true;
-    final status = await Permission.notification.request();
-    return status.isGranted;
-  }
-
   // ===============================
   // INITIAL LOCATION
   // ===============================
@@ -89,7 +70,6 @@ class _HomePageState extends ConsumerState<HomePage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeLocationFlow();
-    _loadSavedRoutes();
   }
 
   @override
@@ -169,14 +149,6 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   // ===============================
-  // 🔹 NEW: Load routes from storage
-  // ===============================
-  Future<void> _loadSavedRoutes() async {
-    final routes = await _routeStorageService.loadAll();
-    debugPrint('Loaded ${routes.length} saved routes');
-  }
-
-  // ===============================
   // START TRACKING
   // ===============================
   Future<void> startBackgroundTracking() async {
@@ -241,10 +213,8 @@ class _HomePageState extends ConsumerState<HomePage>
       });
 
       await FlutterForegroundTask.startService(
-        //serviceId: 200,
         notificationTitle: 'RouteLedger',
         notificationText: 'Tracking route in background...',
-        //notificationIcon: null,
         callback: startCallback,
       );
 
@@ -460,13 +430,7 @@ class _HomePageState extends ConsumerState<HomePage>
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: _TrackingFAB(
         isTracking: _isTracking,
-        onStart: _isProcessingStart
-            ? () {
-                print(
-                  '*******************************************************',
-                );
-              }
-            : startBackgroundTracking,
+        onStart: _isProcessingStart ? () {} : startBackgroundTracking,
         onStop: stopBackgroundTracking,
       ),
     );
@@ -630,7 +594,7 @@ class _TrackingFABState extends State<_TrackingFAB>
               borderRadius: BorderRadius.circular(40), // more pill-like
               boxShadow: [
                 BoxShadow(
-                  color: backgroundColor.withOpacity(0.35),
+                  color: backgroundColor.withValues(alpha: 0.35),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),

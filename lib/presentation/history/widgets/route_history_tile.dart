@@ -57,7 +57,7 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
         scale: _isPressed ? 0.97 : 1,
         child: Card(
           elevation: 4,
-          shadowColor: Colors.black.withOpacity(0.08),
+          shadowColor: Colors.black.withValues(alpha: 0.08),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
@@ -116,7 +116,7 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withOpacity(0.6),
+                                  Colors.black.withValues(alpha: 0.6),
                                 ],
                               ),
                             ),
@@ -133,7 +133,7 @@ class _RouteHistoryTileState extends State<RouteHistoryTile> {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.65),
+                              color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(30),
                             ),
                             child: Row(

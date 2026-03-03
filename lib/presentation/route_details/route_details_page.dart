@@ -293,7 +293,7 @@ class _RouteDetailsPageState extends ConsumerState<RouteDetailsPage> {
                   .read(routeDetailsProvider.notifier)
                   .renameRoute(controller.text);
 
-              Navigator.pop(context);
+              if(mounted) Navigator.pop(context);
             },
             child: const Text("Save"),
           ),

@@ -49,7 +49,7 @@ Avg Speed: ${(route.distanceMeters / route.durationSeconds * 3.6).toStringAsFixe
 
     buffer.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     buffer.writeln(
-      '<gpx version="1.1" creator="YourAppName" xmlns="http://www.topografix.com/GPX/1/1">',
+      '<gpx version="1.1" creator="RouteLedger" xmlns="http://www.topografix.com/GPX/1/1">',
     );
 
     buffer.writeln('<metadata>');

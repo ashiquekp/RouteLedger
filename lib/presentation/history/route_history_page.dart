@@ -11,7 +11,6 @@ class RouteHistoryPage extends ConsumerStatefulWidget {
 }
 
 class _RouteHistoryPageState extends ConsumerState<RouteHistoryPage> {
-
   @override
   Widget build(BuildContext context) {
     final routesAsync = ref.watch(routeHistoryProvider);
@@ -78,19 +77,21 @@ class _RouteHistoryPageState extends ConsumerState<RouteHistoryPage> {
                           .read(routeHistoryProvider.notifier)
                           .delete(route.id);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Route deleted'),
-                          action: SnackBarAction(
-                            label: 'UNDO',
-                            onPressed: () async {
-                              await ref
-                                  .read(routeHistoryProvider.notifier)
-                                  .restore(deletedRoute);
-                            },
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Route deleted'),
+                            action: SnackBarAction(
+                              label: 'UNDO',
+                              onPressed: () async {
+                                await ref
+                                    .read(routeHistoryProvider.notifier)
+                                    .restore(deletedRoute);
+                              },
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     },
                     child: RouteHistoryTile(route: route),
                   ),
@@ -214,7 +215,7 @@ class _RouteHistoryEmptyStateState extends State<_RouteHistoryEmptyState>
                   width: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: colorScheme.primary.withOpacity(0.08),
+                    color: colorScheme.primary.withValues(alpha: 0.08),
                   ),
                   child: Icon(
                     Icons.route_rounded,
@@ -283,12 +284,10 @@ class _DetailedShimmerCard extends StatefulWidget {
   const _DetailedShimmerCard();
 
   @override
-  State<_DetailedShimmerCard> createState() =>
-      _DetailedShimmerCardState();
+  State<_DetailedShimmerCard> createState() => _DetailedShimmerCardState();
 }
 
-class _DetailedShimmerCardState
-    extends State<_DetailedShimmerCard>
+class _DetailedShimmerCardState extends State<_DetailedShimmerCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -311,9 +310,8 @@ class _DetailedShimmerCardState
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    final baseColor = colorScheme.surfaceVariant;
-    final highlightColor =
-        colorScheme.surface.withOpacity(0.6);
+    final baseColor = colorScheme.surfaceContainerHighest;
+    final highlightColor = colorScheme.surface.withValues(alpha: 0.6);
 
     return AnimatedBuilder(
       animation: _controller,
@@ -323,11 +321,7 @@ class _DetailedShimmerCardState
             return LinearGradient(
               begin: Alignment(-1 + 2 * _controller.value, 0),
               end: Alignment(1 + 2 * _controller.value, 0),
-              colors: [
-                baseColor,
-                highlightColor,
-                baseColor,
-              ],
+              colors: [baseColor, highlightColor, baseColor],
               stops: const [0.1, 0.3, 0.4],
             ).createShader(bounds);
           },
