@@ -9,7 +9,8 @@ Designed to demonstrate real-world GPS tracking, background services, and produc
 
 # 🎬 Demo
 
-![Tracking Demo](assets/readme/tracking_demo.gif)
+<img src="assets/readme/tracking_demo.gif" width="300"/>
+
 
 ---
 
@@ -18,44 +19,44 @@ Designed to demonstrate real-world GPS tracking, background services, and produc
 ## 🌞 Light Theme
 
 ### Home
-![Home Light](assets/readme/home_light.png)
+<img src="assets/readme/home_light.png" width="300"/>
 
 ### Live Tracking
-![Tracking Light](assets/readme/tracking_light.png)
+<img src="assets/readme/tracking_light.png" width="300"/>
 
 ### Trip Summary
-![Summary Light](assets/readme/summary_light.png)
+<img src="assets/readme/summary_light.png" width="300"/>
 
 ### Route History
-![History Light](assets/readme/history_light.png)
+<img src="assets/readme/history_light.png" width="300"/>
 
 ### Route Replay
-![Replay Light](assets/readme/replay_light.png)
+<img src="assets/readme/replay_light.png" width="300"/>
 
 ### Share / Export
-![Share Light](assets/readme/share_light.png)
+<img src="assets/readme/share_light.png" width="300"/>
 
 ---
 
 ## 🌙 Dark Theme
 
 ### Home
-![Home Dark](assets/readme/home_dark.png)
+<img src="assets/readme/home_light.png" width="300"/>
 
 ### Live Tracking
-![Tracking Dark](assets/readme/tracking_dark.png)
+<img src="assets/readme/home_dark.png" width="300"/>
 
 ### Trip Summary
-![Summary Dark](assets/readme/summary_dark.png)
+<img src="assets/readme/summary_dark.png" width="300"/>
 
 ### Route History
-![History Dark](assets/readme/history_dark.png)
+<img src="assets/readme/history_dark.png" width="300"/>
 
 ### Route Replay
-![Replay Dark](assets/readme/replay_dark.png)
+<img src="assets/readme/replay_dark.png" width="300"/>
 
 ### Share / Export
-![Share Dark](assets/readme/share_dark.png)
+<img src="assets/readme/share_dark.png" width="300"/>
 
 ---
 
@@ -131,11 +132,12 @@ Key principles:
 - Provider invalidation for consistent UI updates
 - Clean separation between UI and business logic
 
-![Architecture](assets/readme/architecture.png)
+<img src="assets/readme/architecture.png" width="300"/>
 
 ---
 
 # 📁 Project Structure
+```bash
 lib/
 │
 ├── core/
@@ -155,7 +157,7 @@ lib/
 │ └── home_page.dart # Tracking entry point
 │
 └── main.dart
-
+```
 
 ---
 
