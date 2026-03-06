@@ -51,14 +51,14 @@ class RouteModel {
       };
 
   factory RouteModel.fromJson(Map json) {
+    final pointsList = (json['points'] as List?) ?? [];
     return RouteModel(
-      id: json['id'],
-      name: json['name'] ?? "Trip",
-      startTime: DateTime.parse(json['startTime']),
-      endTime: DateTime.parse(json['endTime']),
-      points: (json['points'] as List)
-          .map((e) =>
-              LatLngModel.fromJson(Map<String, dynamic>.from(e)))
+      id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: json['name']?.toString() ?? "Trip",
+      startTime: json['startTime'] != null ? DateTime.parse(json['startTime']) : DateTime.now(),
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : DateTime.now(),
+      points: pointsList
+          .map((e) => LatLngModel.fromJson(Map<String, dynamic>.from(e as Map? ?? {})))
           .toList(),
       distanceMeters: (json['distanceMeters'] ?? 0).toDouble(),
       durationSeconds: json['durationSeconds'] ?? 0,

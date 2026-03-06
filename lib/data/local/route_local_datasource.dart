@@ -7,9 +7,20 @@ class RouteLocalDataSource {
   Box get _box => Hive.box(_boxName);
 
   Future<List<RouteModel>> getAllRoutes() async {
-    final routes = _box.values
-        .map((e) => RouteModel.fromJson(Map<String, dynamic>.from(e)))
-        .toList();
+    final List<RouteModel> routes = [];
+    
+    for (var value in _box.values) {
+      try {
+        if (value is Map) {
+          routes.add(RouteModel.fromJson(Map<String, dynamic>.from(value)));
+        } else {
+          print('Skipping non-map route value: ${value.runtimeType}');
+        }
+      } catch (e) {
+        print('Error parsing route: $e');
+        // We skip corrupted routes so the whole screen doesn't crash
+      }
+    }
 
     return routes;
   }

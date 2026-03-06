@@ -14,8 +14,8 @@ class LatLngModel {
 
   factory LatLngModel.fromJson(Map json) {
     return LatLngModel(
-      latitude: (json['lat'] as num).toDouble(),
-      longitude: (json['lng'] as num).toDouble(),
+      latitude: (json['lat'] ?? json['latitude'] ?? 0.0).toDouble(),
+      longitude: (json['lng'] ?? json['longitude'] ?? 0.0).toDouble(),
     );
   }
 }

@@ -6,10 +6,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:routeledger/core/background/location_task_handler.dart';
 import 'package:routeledger/core/services/directions_service.dart';
+import 'package:routeledger/core/services/location_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:routeledger/core/services/route_storage_service.dart';
 import 'package:routeledger/core/utils/distance_utils.dart';
@@ -19,6 +19,7 @@ import 'package:routeledger/data/models/route_model.dart';
 import 'package:routeledger/presentation/history/route_history_page.dart';
 import 'package:routeledger/presentation/history/route_history_provider.dart';
 import 'package:routeledger/presentation/summary/route_summary_page.dart';
+import 'package:fl_location/fl_location.dart' as flloc;
 
 enum LocationInitState {
   loading,
@@ -52,8 +53,6 @@ class _HomePageState extends ConsumerState<HomePage>
   /// 🔹 Each inner list = one tracking session
   final List<List<LatLng>> _routeSegments = [];
 
-  StreamSubscription<Position>? _positionStream;
-
   LatLng? _currentLatLng;
 
   // ===============================
@@ -70,11 +69,45 @@ class _HomePageState extends ConsumerState<HomePage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeLocationFlow();
+    LocationService.instance.addLocationChangedCallback(_onLocationChanged);
+    _checkActiveSession();
+  }
+
+  Future<void> _checkActiveSession() async {
+    final box = await Hive.openBox('background_session_box');
+    final activeStartTime = box.get('start_time');
+    if (activeStartTime != null &&
+        await LocationService.instance.isRunningService) {
+      if (mounted) {
+        setState(() {
+          _isTracking = true;
+          _currentRouteStartTime =
+              DateTime.fromMillisecondsSinceEpoch(activeStartTime as int);
+          _routeSegments.add([]); // Create a segment for current active line
+        });
+      }
+    }
+    await box.close();
+  }
+
+  void _onLocationChanged(flloc.Location location) {
+    if (!mounted) return;
+    final point = LatLng(location.latitude, location.longitude);
+    print('************************************************');
+    print('New location: $point');
+    setState(() {
+      _currentLatLng = point;
+      if (_isTracking && _routeSegments.isNotEmpty) {
+        _routeSegments.last.add(point);
+      }
+    });
+    _moveCamera(point);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    LocationService.instance.removeLocationChangedCallback(_onLocationChanged);
     super.dispose();
   }
 
@@ -212,47 +245,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _routeSegments.add([]);
       });
 
-      await FlutterForegroundTask.startService(
-        notificationTitle: 'RouteLedger',
-        notificationText: 'Tracking route in background...',
-        callback: startCallback,
-      );
-
-      await FlutterForegroundTask.updateService(
-        notificationTitle: 'RouteLedger',
-        notificationText: 'Tracking route in background',
-      );
-
-      _positionStream =
-          Geolocator.getPositionStream(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.bestForNavigation,
-              distanceFilter: 5,
-            ),
-          ).listen(
-            (position) {
-              if (position.accuracy > 30) return;
-
-              final point = LatLng(position.latitude, position.longitude);
-
-              setState(() {
-                _currentLatLng = point;
-                _routeSegments.last.add(point);
-              });
-
-              _moveCamera(point);
-            },
-            onError: (error) async {
-              debugPrint("Location stream error: $error");
-
-              await stopBackgroundTracking();
-
-              setState(() {
-                _locationState = LocationInitState.gpsDisabled;
-              });
-            },
-            cancelOnError: true,
-          );
+      await LocationService.instance.start();
     } catch (e) {
       debugPrint("Start tracking failed: $e");
     } finally {
@@ -268,16 +261,51 @@ class _HomePageState extends ConsumerState<HomePage>
   // STOP TRACKING (SAVE ROUTE)
   // ===============================
   Future<void> stopBackgroundTracking() async {
-    if (!_isTracking || _currentRouteStartTime == null) return;
+    if (!_isTracking || _currentRouteStartTime == null) {
+      print('[HomePage] Stop ignored: isTracking=$_isTracking, startTime=$_currentRouteStartTime');
+      return;
+    }
 
-    await FlutterForegroundTask.stopService();
-    await _positionStream?.cancel();
+    print('[HomePage] Stopping service...');
+    await LocationService.instance.stop();
 
-    final lastSegment = _routeSegments.isNotEmpty
-        ? _routeSegments.last
-        : <LatLng>[];
+    // Ensure we give the isolate a tiny moment to close the box
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final box = await Hive.openBox('background_session_box');
+
+    // Retrieve ALL gathered points from the background isolate
+    final dynamic data = box.get('points');
+    print('[HomePage] sessionData type: ${data?.runtimeType}');
+    
+    List<dynamic> rawList = [];
+    if (data is List) {
+      rawList = data;
+    }
+
+    print('[HomePage] Total points retrieved from background box: ${rawList.length}');
+
+    // Clear session entries
+    await box.clear();
+    await box.close();
+
+    final List<LatLngModel> lastSegment = [];
+
+    for (final item in rawList) {
+      if (item is Map) {
+        try {
+          final map = Map<String, dynamic>.from(item);
+          lastSegment.add(LatLngModel.fromJson(map));
+        } catch (e) {
+          print('[HomePage] Error parsing point: $e');
+        }
+      }
+    }
+
+    print('[HomePage] Final points count: ${lastSegment.length}');
 
     if (lastSegment.length < 2) {
+      print('[HomePage] Not enough points to save (need at least 2).');
       setState(() {
         _isTracking = false;
         _currentRouteStartTime = null;
@@ -285,9 +313,7 @@ class _HomePageState extends ConsumerState<HomePage>
       return;
     }
 
-    final points = lastSegment
-        .map((e) => LatLngModel(latitude: e.latitude, longitude: e.longitude))
-        .toList();
+    final points = lastSegment;
 
     final distanceMeters = DistanceUtils.calculateTotalDistance(points);
 

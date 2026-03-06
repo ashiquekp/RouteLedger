@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:routeledger/core/theme/app_theme.dart';
 import 'package:routeledger/core/theme/theme_provider.dart';
+import 'package:routeledger/core/services/location_service.dart';
 import 'home_page.dart';
 
 void main() async {
@@ -12,26 +12,9 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('routesBox');
   await dotenv.load(fileName: ".env");
-  FlutterForegroundTask.init(
-    androidNotificationOptions: AndroidNotificationOptions(
-      channelId: 'route_tracking_channel',
-      channelName: 'Route Tracking',
-      channelDescription: 'Background route tracking',
-      channelImportance: NotificationChannelImportance.DEFAULT,
-      priority: NotificationPriority.DEFAULT,
-      enableVibration: false,
-      playSound: false,
-      showWhen: false,
-    ),
-    iosNotificationOptions: const IOSNotificationOptions(),
-    foregroundTaskOptions: ForegroundTaskOptions(
-      interval: 5000,
-      isOnceEvent: false,
-      autoRunOnBoot: false,
-      allowWakeLock: true,
-      allowWifiLock: true,
-    ),
-  );
+
+  // LocationService.instance.init() replaces the old initialization
+  LocationService.instance.init();
 
   runApp(const ProviderScope(child: MyApp()));
 }
