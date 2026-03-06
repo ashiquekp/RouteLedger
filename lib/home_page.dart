@@ -76,15 +76,36 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _checkActiveSession() async {
     final box = await Hive.openBox('background_session_box');
     final activeStartTime = box.get('start_time');
+    final dynamic data = box.get('points');
+
     if (activeStartTime != null &&
         await LocationService.instance.isRunningService) {
       if (mounted) {
+        final List<LatLng> restoredPoints = [];
+        if (data is List) {
+          for (final item in data) {
+            if (item is Map) {
+              final lat = (item['lat'] ?? item['latitude'] ?? 0.0).toDouble();
+              final lng = (item['lng'] ?? item['longitude'] ?? 0.0).toDouble();
+              restoredPoints.add(LatLng(lat, lng));
+            }
+          }
+        }
+
         setState(() {
           _isTracking = true;
           _currentRouteStartTime =
               DateTime.fromMillisecondsSinceEpoch(activeStartTime as int);
-          _routeSegments.add([]); // Create a segment for current active line
+          _routeSegments.add(restoredPoints);
+
+          if (restoredPoints.isNotEmpty) {
+            _currentLatLng = restoredPoints.last;
+          }
         });
+
+        if (_currentLatLng != null) {
+          _moveCamera(_currentLatLng!);
+        }
       }
     }
     await box.close();
@@ -93,8 +114,6 @@ class _HomePageState extends ConsumerState<HomePage>
   void _onLocationChanged(flloc.Location location) {
     if (!mounted) return;
     final point = LatLng(location.latitude, location.longitude);
-    print('************************************************');
-    print('New location: $point');
     setState(() {
       _currentLatLng = point;
       if (_isTracking && _routeSegments.isNotEmpty) {
@@ -262,11 +281,9 @@ class _HomePageState extends ConsumerState<HomePage>
   // ===============================
   Future<void> stopBackgroundTracking() async {
     if (!_isTracking || _currentRouteStartTime == null) {
-      print('[HomePage] Stop ignored: isTracking=$_isTracking, startTime=$_currentRouteStartTime');
       return;
     }
 
-    print('[HomePage] Stopping service...');
     await LocationService.instance.stop();
 
     // Ensure we give the isolate a tiny moment to close the box
@@ -276,14 +293,11 @@ class _HomePageState extends ConsumerState<HomePage>
 
     // Retrieve ALL gathered points from the background isolate
     final dynamic data = box.get('points');
-    print('[HomePage] sessionData type: ${data?.runtimeType}');
     
     List<dynamic> rawList = [];
     if (data is List) {
       rawList = data;
     }
-
-    print('[HomePage] Total points retrieved from background box: ${rawList.length}');
 
     // Clear session entries
     await box.clear();
@@ -297,15 +311,12 @@ class _HomePageState extends ConsumerState<HomePage>
           final map = Map<String, dynamic>.from(item);
           lastSegment.add(LatLngModel.fromJson(map));
         } catch (e) {
-          print('[HomePage] Error parsing point: $e');
+          debugPrint('[HomePage] Error parsing point: $e');
         }
       }
     }
 
-    print('[HomePage] Final points count: ${lastSegment.length}');
-
     if (lastSegment.length < 2) {
-      print('[HomePage] Not enough points to save (need at least 2).');
       setState(() {
         _isTracking = false;
         _currentRouteStartTime = null;

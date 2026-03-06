@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:fl_location/fl_location.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 
 @pragma('vm:entry-point')
 void startLocationServiceHandler() {
@@ -22,15 +23,12 @@ class LocationTaskHandler extends TaskHandler {
     _routesBox = await Hive.openBox('background_session_box');
 
     _activeSessionStart = DateTime.now();
-    print('[Background] Isolate started. Session: $_activeSessionStart');
 
     // 2. Start Location Stream
     _streamSubscription = FlLocation.getLocationStream(
       accuracy: LocationAccuracy.navigation,
       distanceFilter: 0,
     ).listen((location) async {
-      print('[Background] Raw location: ${location.latitude}, ${location.longitude} (acc: ${location.accuracy})');
-      
       // Send location data back to main app natively (if main app is alive, it draws to map)
       final String locationJson = jsonEncode(location.toJson());
       FlutterForegroundTask.sendDataToMain(locationJson);
@@ -39,6 +37,13 @@ class LocationTaskHandler extends TaskHandler {
       if (location.accuracy <= 50) {
         await _saveLocationToHive(location);
       }
+
+      // 🔹 Update notification on every change
+      final String time = DateFormat('HH:mm:ss').format(DateTime.now());
+      FlutterForegroundTask.updateService(
+        notificationTitle: 'RouteLedger Tracking',
+        notificationText: 'Location updated at $time',
+      );
     });
 
     FlutterForegroundTask.updateService(
@@ -65,8 +70,6 @@ class LocationTaskHandler extends TaskHandler {
     rawList.add(pointMap);
     await _routesBox!.put('points', rawList);
     await _routesBox!.put('start_time', _activeSessionStart!.millisecondsSinceEpoch);
-    
-    print('[Background] Saved point #${rawList.length}');
   }
 
   @override

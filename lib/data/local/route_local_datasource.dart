@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import '../models/route_model.dart';
 
@@ -14,10 +15,10 @@ class RouteLocalDataSource {
         if (value is Map) {
           routes.add(RouteModel.fromJson(Map<String, dynamic>.from(value)));
         } else {
-          print('Skipping non-map route value: ${value.runtimeType}');
+          debugPrint('Skipping non-map route value: ${value.runtimeType}');
         }
       } catch (e) {
-        print('Error parsing route: $e');
+        debugPrint('Error parsing route: $e');
         // We skip corrupted routes so the whole screen doesn't crash
       }
     }
