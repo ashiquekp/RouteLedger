@@ -18,45 +18,17 @@ Designed to demonstrate real-world GPS tracking, background services, and produc
 
 ## 🌞 Light Theme
 
-### Home
-<img src="assets/readme/home_light.png" width="300"/>
-
-### Live Tracking
-<img src="assets/readme/tracking_light.png" width="300"/>
-
-### Trip Summary
-<img src="assets/readme/summary_light.png" width="300"/>
-
-### Route History
-<img src="assets/readme/history_light.png" width="300"/>
-
-### Route Replay
-<img src="assets/readme/replay_light.png" width="300"/>
-
-### Share / Export
-<img src="assets/readme/share_light.png" width="300"/>
+| Home | Live Tracking | Trip Summary | Route History | Route Replay | Share / Export |
+|:------------------:|:---------------------:|:------------------:|:---------------------:|:------------------:|:---------------------:|
+| <img src="assets/readme/home_light.png" width="300"/> | <img src="assets/readme/tracking_light.png" width="300"/> | <img src="assets/readme/summary_light.png" width="300"/> | <img src="assets/readme/history_light.png" width="300"/> | <img src="assets/readme/replay_light.png" width="300"/> | <img src="assets/readme/share_light.png" width="300"/> |
 
 ---
 
 ## 🌙 Dark Theme
 
-### Home
-<img src="assets/readme/home_light.png" width="300"/>
-
-### Live Tracking
-<img src="assets/readme/home_dark.png" width="300"/>
-
-### Trip Summary
-<img src="assets/readme/summary_dark.png" width="300"/>
-
-### Route History
-<img src="assets/readme/history_dark.png" width="300"/>
-
-### Route Replay
-<img src="assets/readme/replay_dark.png" width="300"/>
-
-### Share / Export
-<img src="assets/readme/share_dark.png" width="300"/>
+| Home | Live Tracking | Trip Summary | Route History | Route Replay | Share / Export |
+|:------------------:|:---------------------:|:------------------:|:---------------------:|:------------------:|:---------------------:|
+| <img src="assets/readme/home_light.png" width="300"/> |  <img src="assets/readme/home_dark.png" width="300"/> | <img src="assets/readme/summary_dark.png" width="300"/> | <img src="assets/readme/history_dark.png" width="300"/> | <img src="assets/readme/replay_dark.png" width="300"/> | <img src="assets/readme/share_dark.png" width="300"/> |
 
 ---
 
