@@ -1,6 +1,6 @@
 # RouteLedger 🚗📍
 
-RouteLedger is a production-ready Flutter application for tracking, saving, replaying, and exporting GPS routes.
+RouteLedger is a production-ready Flutter application for tracking, saving, replaying, exporting GPS routes and works even when the app is killed.
 
 Built with scalable architecture, offline-first persistence, and clean state management using Riverpod.  
 Designed to demonstrate real-world GPS tracking, background services, and production-grade Flutter engineering.
